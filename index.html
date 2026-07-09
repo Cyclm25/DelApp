@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kargo — On-Demand Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#F4F5F8; --surface:#FFFFFF; --surface-alt:#EEF0F4; --surface-raise:#FFFFFF;
+  --ink:#12141C; --ink-soft:#5C6472; --ink-faint:#96A0B0;
+  --navy:#0E1A33; --navy-soft:#E7EBF3;
+  --accent:#FF5A2E; --accent-ink:#FFFFFF; --accent-soft:#FFE7DD; --accent-dim:#E64F26;
+  --teal:#0AA398; --teal-soft:#DEF4F1;
+  --warn:#EEA110; --warn-soft:#FCF0D6;
+  --danger:#E5484D; --danger-soft:#FBE3E4;
+  --border:#E4E7ED;
+  --shadow-sm:0 1px 2px rgba(14,26,51,.05),0 1px 1px rgba(14,26,51,.04);
+  --shadow-md:0 10px 26px rgba(14,26,51,.08),0 2px 6px rgba(14,26,51,.05);
+  --shadow-lg:0 24px 56px rgba(14,26,51,.18),0 6px 14px rgba(14,26,51,.08);
+  --radius-sm:12px; --radius-md:18px; --radius-lg:26px; --radius-pill:999px;
+  --font-display:'Plus Jakarta Sans',sans-serif; --font-body:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+[data-theme="dark"]{
+  --bg:#080B12; --surface:#12161F; --surface-alt:#181D28; --surface-raise:#1A202C;
+  --ink:#F2F4F8; --ink-soft:#9BA4B4; --ink-faint:#5E6779;
+  --navy:#0E1A33; --navy-soft:#161F32;
+  --accent:#FF6E42; --accent-ink:#0A0D13; --accent-soft:#2A1710; --accent-dim:#FF6E42;
+  --teal:#22D6C9; --teal-soft:#0D2A29;
+  --warn:#F2B705; --warn-soft:#2B2410;
+  --danger:#FF5C61; --danger-soft:#2B1416;
+  --border:#232A38;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 10px 26px rgba(0,0,0,.45);
+  --shadow-lg:0 24px 56px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:var(--font-body); background:#05070A;
+  display:flex; align-items:center; justify-content:center; min-height:100vh;
+  padding:28px; color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent); color:var(--accent-ink);}
+button, input, textarea, select{font-family:inherit; color:inherit;}
+button{cursor:pointer; border:none; background:none;}
+input:focus, textarea:focus, select:focus, button:focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+a{color:inherit;}
+::-webkit-scrollbar{width:0; height:0;}
+
+/* ============ PHONE FRAME ============ */
+.stage{display:flex; flex-direction:column; align-items:center; gap:14px;}
+.rig-label{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#7A8296;}
+.phone{
+  width:390px; height:844px; background:var(--bg); border-radius:52px;
+  padding:14px; box-shadow:0 0 0 12px #14161C, 0 40px 90px rgba(0,0,0,.55);
+  position:relative; overflow:hidden;
+}
+.notch{
+  position:absolute; top:14px; left:50%; transform:translateX(-50%);
+  width:126px; height:32px; background:#14161C; border-radius:0 0 20px 20px; z-index:50;
+}
+.screen-frame{
+  width:100%; height:100%; background:var(--bg); border-radius:38px; overflow:hidden;
+  position:relative; display:flex; flex-direction:column;
+}
+.statusbar{
+  height:48px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+  padding:0 28px 0 24px; font-family:var(--font-mono); font-size:13px; font-weight:600; color:var(--ink);
+}
+.statusbar .icons{display:flex; gap:5px; align-items:center;}
+.app-body{flex:1 1 auto; overflow-y:auto; position:relative; scroll-behavior:smooth;}
+.app-body::-webkit-scrollbar{display:none;}
+#bottomNavSlot{flex:0 0 auto;}
+
+/* ============ SCREEN TRANSITIONS ============ */
+.screen{animation:slideIn .32s cubic-bezier(.22,.8,.36,1);}
+@keyframes slideIn{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
+@media (prefers-reduced-motion: reduce){ .screen{animation:none;} }
+
+/* ============ TYPE ============ */
+h1,h2,h3,h4{font-family:var(--font-display); font-weight:600; letter-spacing:-.01em; color:var(--ink);}
+.mono{font-family:var(--font-mono);}
+.eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); font-weight:600;}
+.text-soft{color:var(--ink-soft);}
+.text-faint{color:var(--ink-faint);}
+
+/* ============ HEADER ============ */
+.topbar{
+  display:flex; align-items:center; gap:12px; padding:6px 20px 16px; flex:0 0 auto;
+}
+.topbar h2{font-size:19px;}
+.icon-btn{
+  width:40px; height:40px; border-radius:var(--radius-pill); background:var(--surface);
+  display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm);
+  color:var(--ink); flex:0 0 auto; transition:transform .15s cubic-bezier(.22,.8,.36,1), box-shadow .15s ease;
+}
+.icon-btn svg{width:20px; height:20px; display:block;}
+.icon-btn:active{transform:scale(.90);}
+.icon-btn.accent{background:var(--accent); color:var(--accent-ink); box-shadow:0 6px 16px rgba(255,90,46,.35);}
+
+/* ============ BUTTONS ============ */
+.btn{
+  height:52px; border-radius:var(--radius-md); font-family:var(--font-body); font-weight:600; font-size:15px;
+  display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+  transition:transform .12s cubic-bezier(.22,.8,.36,1), box-shadow .12s ease, opacity .12s ease, filter .12s ease;
+  letter-spacing:-.01em;
+}
+.btn svg{width:19px; height:19px; flex:0 0 auto;}
+.btn:active{transform:scale(.97); filter:brightness(.96);}
+.btn-primary{background:linear-gradient(135deg, var(--accent), var(--accent-dim)); color:var(--accent-ink); box-shadow:0 12px 26px rgba(230,79,38,.32);}
+.btn-primary:disabled{opacity:.4; box-shadow:none;}
+.btn-dark{background:var(--navy); color:#fff;}
+.btn-outline{background:transparent; border:1.5px solid var(--border); color:var(--ink);}
+.btn-ghost{background:var(--surface-alt); color:var(--ink);}
+.btn-sm{height:40px; font-size:13px; border-radius:var(--radius-sm);}
+.btn-danger-outline{background:transparent; border:1.5px solid var(--danger); color:var(--danger);}
+
+/* ============ CARDS / SURFACES ============ */
+.card{background:var(--surface); border-radius:var(--radius-md); box-shadow:var(--shadow-sm); border:1px solid var(--border);}
+.pad{padding:18px;}
+.px{padding-left:20px; padding-right:20px;}
+
+/* ============ FORM ELEMENTS ============ */
+.field{margin-bottom:16px;}
+.field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:7px;}
+.input, .textarea, .select{
+  width:100%; background:var(--surface-alt); border:1.5px solid transparent; border-radius:var(--radius-sm);
+  padding:13px 14px; font-size:14.5px; color:var(--ink); transition:border-color .15s ease, background .15s ease;
+}
+.input:focus, .textarea:focus, .select:focus{border-color:var(--accent); background:var(--surface);}
+.input.err, .textarea.err{border-color:var(--danger); background:var(--danger-soft);}
+.err-msg{font-size:12px; color:var(--danger); margin-top:6px; font-weight:500; display:none;}
+.err-msg.show{display:block;}
+.textarea{resize:none; min-height:84px;}
+.input-icon-wrap{position:relative;}
+.input-icon-wrap .input{padding-left:40px;}
+.input-icon-wrap svg{position:absolute; left:13px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--ink-faint); pointer-events:none;}
+
+/* ============ CHIPS ============ */
+.chip-row{display:flex; gap:8px; flex-wrap:wrap;}
+.chip{
+  padding:9px 15px; border-radius:var(--radius-pill); background:var(--surface-alt); font-size:13px; font-weight:600;
+  color:var(--ink-soft); border:1.5px solid transparent; transition:.15s ease; white-space:nowrap;
+}
+.chip.active{background:var(--ink); color:var(--bg); }
+[data-theme="dark"] .chip.active{background:var(--accent); color:var(--accent-ink);}
+.chip.accent-active.active{background:var(--accent); color:var(--accent-ink);}
+
+/* ============ BOTTOM NAV ============ */
+.bottomnav{
+  flex:0 0 auto; display:flex; padding:8px 10px calc(env(safe-area-inset-bottom) + 10px);
+  background:var(--surface); border-top:1px solid var(--border); gap:2px;
+}
+.nav-item{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  padding:7px 0 6px; color:var(--ink-faint); font-size:10.5px; font-weight:600; letter-spacing:.01em;
+  position:relative; transition:color .18s ease;
+}
+.nav-item .nav-ico{
+  width:26px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:11px;
+  transition:background .18s ease, transform .18s cubic-bezier(.22,.8,.36,1);
+}
+.nav-item svg{width:22px; height:22px; display:block;}
+.nav-item.active{color:var(--accent);}
+.nav-item.active .nav-ico{background:var(--accent-soft); transform:translateY(-1px);}
+.nav-item:active .nav-ico{transform:scale(.88);}
+
+/* ============ MISC ============ */
+.divider{height:1px; background:var(--border); margin:16px 0;}
+.badge{font-size:11px; font-weight:700; padding:4px 9px; border-radius:var(--radius-pill); display:inline-flex; align-items:center; gap:4px;}
+.badge-teal{background:var(--teal-soft); color:var(--teal);}
+.badge-warn{background:var(--warn-soft); color:#8a6600;}
+[data-theme="dark"] .badge-warn{color:var(--warn);}
+.badge-danger{background:var(--danger-soft); color:var(--danger);}
+.badge-accent{background:var(--accent-soft); color:var(--accent);}
+.avatar{
+  width:44px; height:44px; border-radius:var(--radius-pill); background:linear-gradient(135deg, var(--navy), #1B2C52); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:15px; flex:0 0 auto;
+  letter-spacing:.01em;
+}
+.row{display:flex; align-items:center;}
+.between{justify-content:space-between;}
+.gap-8{gap:8px;} .gap-10{gap:10px;} .gap-12{gap:12px;} .gap-14{gap:14px;} .gap-16{gap:16px;}
+.mt-8{margin-top:8px;} .mt-12{margin-top:12px;} .mt-16{margin-top:16px;} .mt-20{margin-top:20px;} .mt-24{margin-top:24px;}
+.mb-8{margin-bottom:8px;} .mb-12{margin-bottom:12px;} .mb-16{margin-bottom:16px;}
+.tap{transition:transform .12s ease;} .tap:active{transform:scale(.97);}
+.stars{display:flex; gap:3px; color:var(--warn);}
+.spinner{
+  width:16px; height:16px; border-radius:50%; border:2.5px solid rgba(255,255,255,.35); border-top-color:currentColor;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast{
+  position:absolute; bottom:100px; left:20px; right:20px; background:var(--ink); color:var(--bg);
+  padding:14px 16px; border-radius:var(--radius-sm); box-shadow:var(--shadow-lg); font-size:13.5px; font-weight:600;
+  display:flex; align-items:center; gap:10px; z-index:200; animation:toastIn .3s cubic-bezier(.22,.8,.36,1);
+}
+@keyframes toastIn{from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);}}
+
+/* ============ SPLASH ============ */
+.splash{
+  height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(255,90,46,.20), transparent 55%),
+    linear-gradient(165deg, #0E1A33 0%, #0A1226 60%, #070B16 100%);
+  position:relative; overflow:hidden;
+}
+.splash-grid{position:absolute; inset:0; opacity:.5; pointer-events:none;}
+.splash-mark{
+  width:88px; height:88px; position:relative; z-index:2;
+  animation:markPop .8s cubic-bezier(.22,.9,.30,1.35);
+  filter:drop-shadow(0 18px 40px rgba(255,90,46,.35));
+}
+@keyframes markPop{from{transform:scale(.5); opacity:0;} to{transform:scale(1); opacity:1;}}
+.splash-word{
+  font-family:var(--font-display); font-size:23px; font-weight:800; color:#fff; letter-spacing:.02em;
+  position:relative; z-index:2; opacity:0; animation:fadeUp .6s ease .35s forwards;
+}
+@keyframes fadeUp{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+.splash-loader{display:flex; gap:6px; margin-top:6px; position:relative; z-index:2; opacity:0; animation:fadeUp .6s ease .55s forwards;}
+.splash-loader i{width:6px; height:6px; border-radius:50%; background:var(--accent); animation:dotPulse 1.1s ease-in-out infinite;}
+.splash-loader i:nth-child(2){animation-delay:.15s;} .splash-loader i:nth-child(3){animation-delay:.3s;}
+@keyframes dotPulse{0%,80%,100%{opacity:.25; transform:scale(.75);} 40%{opacity:1; transform:scale(1);}}
+
+/* ============ AUTH ============ */
+.authwrap{padding:34px 24px 24px; height:100%; display:flex; flex-direction:column;}
+.auth-tabs{display:flex; background:var(--surface-alt); border-radius:var(--radius-pill); padding:4px; margin-bottom:26px;}
+.auth-tab{flex:1; text-align:center; padding:11px 0; border-radius:var(--radius-pill); font-weight:700; font-size:13.5px; color:var(--ink-soft);}
+.auth-tab.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow-sm);}
+.social-row{display:flex; gap:10px; margin-top:14px;}
+.social-btn{flex:1; height:48px; border-radius:var(--radius-sm); border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; gap:8px;}
+.or-divider{display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--ink-faint); font-size:12px; font-weight:600;}
+.or-divider::before, .or-divider::after{content:''; flex:1; height:1px; background:var(--border);}
+
+/* ============ ROUTE MAP SIGNATURE ============ */
+.route-preview{
+  position:relative; height:168px; border-radius:var(--radius-md); overflow:hidden; background:
+  radial-gradient(circle at 15% 20%, rgba(230,79,38,.12), transparent 45%),
+  radial-gradient(circle at 85% 80%, rgba(11,165,160,.14), transparent 45%), var(--surface-alt);
+  border:1px solid var(--border);
+}
+.route-preview svg{width:100%; height:100%; display:block;}
+.route-grid line{stroke:var(--border); stroke-width:1;}
+.route-path{fill:none; stroke:var(--ink-faint); stroke-width:2.5; stroke-dasharray:7 7; }
+.route-path.animate{ animation:dashmove 1.4s linear infinite; }
+@keyframes dashmove{to{stroke-dashoffset:-28;}}
+.route-dot-a{fill:var(--accent);} .route-dot-b{fill:var(--teal);}
+.route-pulse{fill:none; stroke:var(--teal); stroke-width:2; opacity:.6; animation:pulseRing 1.8s ease-out infinite;}
+@keyframes pulseRing{0%{r:6; opacity:.7;}100%{r:22; opacity:0;}}
+.rider-marker{ offset-path:path('M40,120 C90,40 210,150 300,60'); animation:none; }
+
+/* ============ TIMELINE ============ */
+.timeline{position:relative; padding-left:6px;}
+.tl-item{display:flex; gap:14px; position:relative; padding-bottom:26px;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-item::before{
+  content:''; position:absolute; left:11px; top:26px; bottom:0; width:2px; background:var(--border);
+}
+.tl-item:last-child::before{display:none;}
+.tl-dot{
+  width:24px; height:24px; border-radius:50%; background:var(--surface-alt); border:2px solid var(--border);
+  display:flex; align-items:center; justify-content:center; flex:0 0 auto; z-index:2; transition:.25s ease;
+}
+.tl-item.done .tl-dot{background:var(--teal); border-color:var(--teal); color:#fff;}
+.tl-item.done::before{background:var(--teal);}
+.tl-item.current .tl-dot{background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 0 0 5px var(--accent-soft);}
+.tl-title{font-weight:700; font-size:14px;}
+.tl-item.current .tl-title{color:var(--accent);}
+.tl-item:not(.done):not(.current) .tl-title{color:var(--ink-faint);}
+.tl-time{font-size:11.5px; color:var(--ink-faint); font-family:var(--font-mono);}
+
+/* ============ WIZARD ============ */
+.wizard-dots{display:flex; gap:6px; padding:0 20px 14px;}
+.wdot{height:4px; flex:1; border-radius:2px; background:var(--border);}
+.wdot.done{background:var(--teal);}
+.wdot.active{background:var(--accent);}
+.footer-bar{padding:14px 20px calc(env(safe-area-inset-bottom) + 14px); background:var(--surface); border-top:1px solid var(--border); flex:0 0 auto;}
+.footer-bar.split{display:flex; gap:10px;}
+
+/* ============ VEHICLE CARD ============ */
+.vcard{display:flex; align-items:center; gap:14px; padding:14px; border-radius:var(--radius-md); border:1.5px solid var(--border); background:var(--surface); margin-bottom:10px; transition:.15s ease;}
+.vcard.selected{border-color:var(--accent); background:var(--accent-soft);}
+.vcard .vicon{width:52px; height:52px; border-radius:14px; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:var(--ink);}
+.vcard.selected .vicon{background:var(--accent); color:var(--accent-ink);}
+
+/* ============ EMPTY STATES ============ */
+.empty{display:flex; flex-direction:column; align-items:center; text-align:center; padding:60px 30px; gap:12px; color:var(--ink-soft);}
+.empty .emoji{font-size:38px;}
+
+/* ============ CHAT ============ */
+.bubble{max-width:76%; padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.4; margin-bottom:8px;}
+.bubble.them{background:var(--surface-alt); border-bottom-left-radius:4px; align-self:flex-start;}
+.bubble.me{background:var(--accent); color:var(--accent-ink); border-bottom-right-radius:4px; align-self:flex-end; margin-left:auto;}
+.bubble-time{font-size:10px; color:var(--ink-faint); margin-top:2px;}
+
+/* ============ SWITCH ============ */
+.switch{width:44px; height:26px; border-radius:var(--radius-pill); background:var(--border); position:relative; flex:0 0 auto; transition:.2s ease;}
+.switch.on{background:var(--accent);}
+.switch i{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:.2s ease; box-shadow:var(--shadow-sm);}
+.switch.on i{left:21px;}
+
+/* Utility */
+.flex1{flex:1;} .relative{position:relative;} .hidden{display:none !important;}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="rig-label">KARGO — DELIVERY, REIMAGINED</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen-frame" id="screenFrame">
+      <div class="statusbar" id="statusbar">
+        <span id="clock">9:41</span>
+        <div class="icons">
+          <svg width="17" height="10" viewBox="0 0 17 10" fill="none"><rect x="0" y="6" width="3" height="4" rx="0.5" fill="currentColor"/><rect x="4.5" y="4" width="3" height="6" rx="0.5" fill="currentColor"/><rect x="9" y="2" width="3" height="8" rx="0.5" fill="currentColor"/><rect x="13.5" y="0" width="3" height="10" rx="0.5" fill="currentColor"/></svg>
+          <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 11C9.5 11 11.3 10.2 12.7 8.8L11.3 7.4C10.2 8.5 8.9 9 7.5 9C6.1 9 4.8 8.5 3.7 7.4L2.3 8.8C3.7 10.2 5.5 11 7.5 11ZM7.5 6.5C8.5 6.5 9.4 6.1 10.1 5.4L8.7 4C8.4 4.3 8 4.5 7.5 4.5C7 4.5 6.6 4.3 6.3 4L4.9 5.4C5.6 6.1 6.5 6.5 7.5 6.5ZM7.5 2C10 2 12.3 3 14 4.7L15 3.7C13 1.7 10.4 0.5 7.5 0.5C4.6 0.5 2 1.7 0 3.7L1 4.7C2.7 3 5 2 7.5 2Z" fill="currentColor"/></svg>
+          <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.5" y="0.5" width="20" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="15" height="7" rx="1.3" fill="currentColor"/><rect x="21.5" y="3.5" width="1.5" height="4" rx="0.7" fill="currentColor"/></svg>
+        </div>
+      </div>
+      <div class="app-body" id="appBody"></div>
+      <div id="bottomNavSlot"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   KARGO — INTERACTIVE PROTOTYPE
+   Single-file SPA. All data is mocked & in-memory (no network,
+   no localStorage — per artifact constraints).
+   ============================================================ */
+
+/* ---------- BRAND LOGO ---------- */
+let _logoUid = 0;
+function Logo(size=88){
+  const id = 'lg' + (_logoUid++);
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="${id}" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#FF7A45"/>
+        <stop offset="1" stop-color="#E64F26"/>
+      </linearGradient>
+    </defs>
+    <rect x="1" y="1" width="98" height="98" rx="26" fill="url(#${id})"/>
+    <path d="M30 26v48" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+    <path d="M30 50 55 26M30 50l25 24" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M61 50h9" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".92"/>
+  </svg>`;
+}
+/* ---------- ICONS (single stroke-based set — unified weight 1.75, rounded joins) ---------- */
+const I = {
+  home:`<svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-8.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+  activity:`<svg viewBox="0 0 24 24" fill="none"><path d="M3 12h4l2.5-7L14 19l2.5-7H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  wallet:`<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="14.2" r="1.2" fill="currentColor"/></svg>`,
+  profile:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  back:`<svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  bell:`<svg viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  box:`<svg viewBox="0 0 24 24" fill="none"><path d="M3.5 7.5 12 3l8.5 4.5V16.5L12 21l-8.5-4.5V7.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 7.5 12 12m0 0 8.5-4.5M12 12v9" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  pin:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg>`,
+  pinFilled:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21Z"/></svg>`,
+  target:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`,
+  clock:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  chat:`<svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5h16v11H9.5L5 20v-3.5H4v-11Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  phone:`<svg viewBox="0 0 24 24" fill="none"><path d="M6 4.5h3l1.5 4L8.5 10a11 11 0 0 0 5.5 5.5l1.5-2 4 1.5v3a1.5 1.5 0 0 1-1.6 1.5C10.5 19 5 13.5 4.5 6.1A1.5 1.5 0 0 1 6 4.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  card:`<svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="13" rx="2.3" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  cash:`<svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="6" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  star:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17.7l-6.1 3.3 1.5-6.8-5.2-4.7 6.9-.7L12 2.5Z"/></svg>`,
+  starOutline:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17.7l-6.1 3.3 1.5-6.8-5.2-4.7 6.9-.7L12 2.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  checkCircle:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.3l2.6 2.6L16.3 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  moto:`<svg viewBox="0 0 24 24" fill="none"><circle cx="5.5" cy="17" r="2.6" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="17" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M8 17h7l-2-6h-4l-1 3M13 11l3-3h3M8 17l3-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  sedan:`<svg viewBox="0 0 24 24" fill="none"><path d="M3 16.5v-2l1.8-4A2 2 0 0 1 6.7 9h10.6a2 2 0 0 1 1.9 1.4l1.4 4.1v2" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 9l1.5-3h9L18 9" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="7" cy="16.5" r="1.8" stroke="currentColor" stroke-width="1.7"/><circle cx="17" cy="16.5" r="1.8" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  mpv:`<svg viewBox="0 0 24 24" fill="none"><path d="M2.5 16v-3l1.5-3.5A2 2 0 0 1 5.9 8.3h12.2a2 2 0 0 1 1.9 1.3L21.5 13v3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4 10.5h16" stroke="currentColor" stroke-width="1.7"/><circle cx="7" cy="16" r="1.8" stroke="currentColor" stroke-width="1.7"/><circle cx="17" cy="16" r="1.8" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  pickup:`<svg viewBox="0 0 24 24" fill="none"><path d="M2 16.5v-3.2l1.3-3.6A1.8 1.8 0 0 1 5 8.5h4.5v8" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 8.5H16a2 2 0 0 1 2 1.6l.7 3.2H9.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M2 13.3h7.5M18.7 13.3H22v3.2" stroke="currentColor" stroke-width="1.7"/><circle cx="6.5" cy="16.5" r="1.8" stroke="currentColor" stroke-width="1.7"/><circle cx="17" cy="16.5" r="1.8" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  van:`<svg viewBox="0 0 24 24" fill="none"><path d="M1.5 16V9.5A1.5 1.5 0 0 1 3 8h11.5a1.5 1.5 0 0 1 1.4 1l1.8 3.7h3.3a1 1 0 0 1 1 1V16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M1.5 12h14" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="16.3" r="1.8" stroke="currentColor" stroke-width="1.7"/><circle cx="17.5" cy="16.3" r="1.8" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  filter:`<svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none"><path d="M4 20l.9-3.6L16.5 5a1.8 1.8 0 0 1 2.5 0l.9.9a1.8 1.8 0 0 1 0 2.5L8.3 19H4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`,
+  chevron:`<svg viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  logout:`<svg viewBox="0 0 24 24" fill="none"><path d="M9 20H5.5a1.5 1.5 0 0 1-1.5-1.5v-13A1.5 1.5 0 0 1 5.5 4H9M16 16l4-4-4-4M20 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5.5c0 4.6-3 7.9-7 9.5-4-1.6-7-4.9-7-9.5V6l7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  siren:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v7H6v-7a6 6 0 0 1 6-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 3V1.5M4 16h16v2.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V16Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  gift:`<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="9" width="18" height="12" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 13h18M12 9v12" stroke="currentColor" stroke-width="1.7"/><path d="M12 9c-1.5-4-6-4.5-6-1.7C6 9 9 9 12 9Zm0 0c1.5-4 6-4.5 6-1.7C18 9 15 9 12 9Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  help:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.3a2.5 2.5 0 1 1 3.6 2.3c-.9.5-1.1 1-1.1 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="16.7" r="1" fill="currentColor"/></svg>`,
+  moon:`<svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  truck:`<svg viewBox="0 0 24 24" fill="none"><path d="M2 7h11v8H2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13 10h4.5l3 3v2H13z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="6" cy="17" r="1.8" stroke="currentColor" stroke-width="1.7"/><circle cx="16.5" cy="17" r="1.8" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" fill="none"><rect x="8.5" y="8.5" width="12" height="12" rx="1.8" stroke="currentColor" stroke-width="1.6"/><path d="M15.5 8.5V5.3A1.8 1.8 0 0 0 13.7 3.5H5.3A1.8 1.8 0 0 0 3.5 5.3v8.4a1.8 1.8 0 0 0 1.8 1.8H8.5" stroke="currentColor" stroke-width="1.6"/></svg>`,
+  download:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0l4-4m-4 4l-4-4M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  send:`<svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 16-3-6-7-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  doc:`<svg viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14.5 3v4h4.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`,
+};
+
+/* ---------- STATE ---------- */
+const S = {
+  theme: 'light',
+  authTab: 'login',
+  screen: 'splash',
+  history: [],
+  user: { name:'Alex Rivera', phone:'+63 917 555 0142', email:'alex.rivera@email.com', initials:'AR' },
+  notifUnread: 3,
+  toastTimer: null,
+  booking: {
+    step: 1,
+    pickup: 'Unit 12B, Ayala Tower One, Makati CBD',
+    dropoff: '',
+    senderName: 'Alex Rivera', senderPhone: '+63 917 555 0142', useMyInfo: true,
+    recipientName: '', recipientPhone: '',
+    itemDesc: '', category: '', notes: '', fragile: false,
+    vehicle: null, payment: 'cash', promo: null,
+    distanceKm: 8.4,
+  },
+  activeOrder: null,
+  ratingStars: 0,
+  ratingTags: [],
+  chatMessages: [],
+  addrModalOpen: false,
+  cardModalOpen: false,
+};
+
+const VEHICLES = [
+  { id:'moto', name:'Motorcycle', desc:'Up to 20 kg · 1–2 boxes', base:49, perKm:9, eta:'3–5 min', icon:I.moto },
+  { id:'sedan', name:'Sedan', desc:'Up to 200 kg · Trunk space', base:99, perKm:14, eta:'5–8 min', icon:I.sedan },
+  { id:'mpv', name:'MPV', desc:'Up to 350 kg · Fits 3 boxes', base:129, perKm:17, eta:'6–9 min', icon:I.mpv },
+  { id:'pickup', name:'Pickup Truck', desc:'Up to 1,000 kg · Open bed', base:249, perKm:24, eta:'8–12 min', icon:I.pickup },
+  { id:'van', name:'Van', desc:'Up to 1,500 kg · Full enclosed', base:329, perKm:29, eta:'10–15 min', icon:I.van },
+];
+
+const CATEGORIES = ['Documents','Food & Beverage','Electronics','Fragile Items','Furniture','Clothing','Others'];
+
+const SAVED_ADDRESSES = [
+  { id:1, label:'Home', icon:'home', address:'45 Sampaguita St, Barangay San Roque, Quezon City' },
+  { id:2, label:'Work', icon:'work', address:'Unit 12B, Ayala Tower One, Makati CBD' },
+  { id:3, label:'Warehouse', icon:'star', address:'Bldg 4, Cavite Export Zone, Rosario, Cavite' },
+];
+
+const PAYMENT_METHODS = [
+  { id:'cash', label:'Cash on Delivery', sub:'Pay the rider directly', icon:I.cash, isDefault:false },
+  { id:'card1', label:'Visa •••• 4821', sub:'Expires 09/28', icon:I.card, isDefault:true },
+  { id:'wallet', label:'Kargo Wallet', sub:'₱1,240.50 available', icon:I.wallet, isDefault:false },
+];
+
+const PROMOS = [
+  { code:'KARGO50', desc:'₱50 off your next delivery', min:'Min. spend ₱200', expiry:'Expires Jul 31, 2026' },
+  { code:'FIRSTBOX', desc:'20% off for first-time senders', min:'Up to ₱100 off', expiry:'Expires Aug 15, 2026' },
+  { code:'VANDAY', desc:'₱150 off Van & Pickup bookings', min:'Min. spend ₱500', expiry:'Expires Jul 20, 2026' },
+];
+
+const RIDER = { name:'Marco Dizon', rating:4.92, trips:2140, plate:'NBC 4471', vehicle:'Honda Click 160i · Red', initials:'MD', phone:'+63 918 222 9981' };
+
+const STAGES = ['Finding Rider','Rider Accepted','Rider Arrived','Item Picked Up','In Transit','Delivered'];
+
+const HISTORY = [
+  { id:'KG-88213', date:'Jul 7, 2026', status:'Delivered', from:'Makati CBD', to:'Quezon City', vehicle:'Motorcycle', amount:187 },
+  { id:'KG-88144', date:'Jul 4, 2026', status:'Delivered', from:'BGC Taguig', to:'Pasig City', vehicle:'Sedan', amount:312 },
+  { id:'KG-87990', date:'Jun 29, 2026', status:'Cancelled', from:'Ortigas Center', to:'Mandaluyong', vehicle:'MPV', amount:0 },
+  { id:'KG-87801', date:'Jun 22, 2026', status:'Delivered', from:'Alabang', to:'Las Piñas', vehicle:'Van', amount:540 },
+];
+
+const NOTIFICATIONS = [
+  { icon:I.checkCircle, title:'Delivery completed', body:'Order KG-88213 was delivered successfully.', time:'2 days ago', unread:false },
+  { icon:I.gift, title:'New voucher available', body:'Use KARGO50 for ₱50 off your next booking.', time:'3 days ago', unread:true },
+  { icon:I.truck, title:'Rider arrived at pickup', body:'Marco D. has arrived at your pickup location.', time:'4 days ago', unread:true },
+  { icon:I.shield, title:'Account verified', body:'Your account verification is complete.', time:'1 week ago', unread:true },
+];
+
+/* ---------- HELPERS ---------- */
+function fmt(n){ return '₱' + n.toLocaleString('en-PH', {minimumFractionDigits:0}); }
+function el(id){ return document.getElementById(id); }
+function pushHistory(s){ if(S.history[S.history.length-1] !== s) S.history.push(s); }
+
+function go(screen, opts={}){
+  if(opts.push !== false) pushHistory(S.screen);
+  S.screen = screen;
+  render();
+  el('appBody').scrollTop = 0;
+}
+function goBack(){
+  const prev = S.history.pop();
+  S.screen = prev || 'home';
+  render();
+}
+function toast(msg){
+  clearTimeout(S.toastTimer);
+  const old = document.querySelector('.toast'); if(old) old.remove();
+  const t = document.createElement('div');
+  t.className='toast';
+  t.innerHTML = `<span style="color:var(--teal)">${I.checkCircle}</span><span>${msg}</span>`;
+  document.getElementById('screenFrame').appendChild(t);
+  S.toastTimer = setTimeout(()=>t.remove(), 2600);
+}
+function toggleTheme(){
+  S.theme = S.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', S.theme);
+  render();
+}
+function validate(rules){
+  let ok = true;
+  rules.forEach(r=>{
+    const inputEl = el(r.id), errEl = el(r.id+'Err');
+    const valid = r.test();
+    if(!valid){ ok = false; if(inputEl) inputEl.classList.add('err'); if(errEl) errEl.classList.add('show'); }
+    else { if(inputEl) inputEl.classList.remove('err'); if(errEl) errEl.classList.remove('show'); }
+  });
+  return ok;
+}
+
+/* ---------- SHARED COMPONENTS ---------- */
+function Topbar(title, {back=false, right=null, big=false} = {}){
+  return `<div class="topbar">
+    ${back ? `<button class="icon-btn" onclick="goBack()">${I.back}</button>` : ''}
+    <h2 style="flex:1; ${big?'font-size:24px;':''}">${title}</h2>
+    ${right || ''}
+  </div>`;
+}
+function BottomNav(active){
+  const items = [
+    {id:'home', label:'Home', icon:I.home},
+    {id:'history', label:'Activity', icon:I.activity},
+    {id:'wallet', label:'Wallet', icon:I.wallet},
+    {id:'profile', label:'Profile', icon:I.profile},
+  ];
+  return `<div class="bottomnav">
+    ${items.map(it=>`<button class="nav-item ${active===it.id?'active':''}" onclick="go('${it.id}', {push:false}); S.history=[];"><span class="nav-ico">${it.icon}</span><span>${it.label}</span></button>`).join('')}
+  </div>`;
+}
+function RoutePreview(animate=true){
+  return `<div class="route-preview">
+    <svg viewBox="0 0 340 168">
+      <g class="route-grid">
+        ${[0,1,2,3,4,5].map(i=>`<line x1="0" y1="${i*34}" x2="340" y2="${i*34}"/>`).join('')}
+        ${[0,1,2,3,4,5,6,7,8].map(i=>`<line x1="${i*42}" y1="0" x2="${i*42}" y2="168"/>`).join('')}
+      </g>
+      <path class="route-path ${animate?'animate':''}" d="M40,128 C90,50 210,150 300,55"/>
+      <circle class="route-dot-a" cx="40" cy="128" r="6"/>
+      <circle class="route-dot-b" cx="300" cy="55" r="6"/>
+      <circle class="route-pulse" cx="300" cy="55" r="6"/>
+    </svg>
+  </div>`;
+}
+function Stars(rating, size=13){
+  const full = Math.floor(rating), frac = rating - full;
+  let s = '';
+  for(let i=0;i<5;i++){ s += `<span style="width:${size}px;height:${size}px;opacity:${i<full?1:(i===full&&frac>0.4?0.6:0.25)}">${I.star}</span>`; }
+  return `<span class="stars">${s}</span>`;
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+
+function Screen_splash(){
+  setTimeout(()=>go('auth',{push:false}), 1900);
+  return `<div class="splash">
+    <svg class="splash-grid" viewBox="0 0 390 700" preserveAspectRatio="none">
+      <g stroke="rgba(255,255,255,.06)" stroke-width="1">
+        ${[0,1,2,3,4,5,6,7].map(i=>`<line x1="${i*56-40}" y1="0" x2="${i*56+120}" y2="700"/>`).join('')}
+      </g>
+    </svg>
+    <div class="splash-mark">${Logo(88)}</div>
+    <div class="splash-word">KARGO</div>
+    <div class="splash-loader"><i></i><i></i><i></i></div>
+  </div>`;
+}
+
+function Screen_auth(){
+  const isLogin = S.authTab === 'login';
+  return `<div class="authwrap">
+    <div style="margin-bottom:20px;">${Logo(44)}</div>
+    <div class="eyebrow" style="margin-bottom:6px;">Welcome back</div>
+    <h1 style="font-size:26px; margin-bottom:22px;">${isLogin? 'Sign in to Kargo' : 'Create your account'}</h1>
+    <div class="auth-tabs">
+      <button class="auth-tab ${isLogin?'active':''}" onclick="S.authTab='login'; render();">Log In</button>
+      <button class="auth-tab ${!isLogin?'active':''}" onclick="S.authTab='register'; render();">Register</button>
+    </div>
+    <div id="authForm">
+      ${isLogin ? `
+        <div class="field">
+          <label>Email address</label>
+          <input class="input" id="loginEmail" placeholder="you@example.com" value="alex.rivera@email.com">
+          <div class="err-msg" id="loginEmailErr">Enter a valid email address.</div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input class="input" id="loginPass" type="password" placeholder="••••••••" value="kargo1234">
+          <div class="err-msg" id="loginPassErr">Password must be at least 8 characters.</div>
+        </div>
+        <div class="row between" style="margin-bottom:4px;">
+          <label class="row gap-8" style="font-size:12.5px; color:var(--ink-soft); font-weight:600;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> Remember me
+          </label>
+          <span style="font-size:12.5px; font-weight:700; color:var(--accent);">Forgot password?</span>
+        </div>
+      ` : `
+        <div class="field">
+          <label>Full name</label>
+          <input class="input" id="regName" placeholder="Juan Dela Cruz">
+          <div class="err-msg" id="regNameErr">Please enter your full name.</div>
+        </div>
+        <div class="field">
+          <label>Mobile number</label>
+          <input class="input" id="regPhone" placeholder="+63 9XX XXX XXXX">
+          <div class="err-msg" id="regPhoneErr">Enter a valid Philippine mobile number.</div>
+        </div>
+        <div class="field">
+          <label>Email address</label>
+          <input class="input" id="regEmail" placeholder="you@example.com">
+          <div class="err-msg" id="regEmailErr">Enter a valid email address.</div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input class="input" id="regPass" type="password" placeholder="Minimum 8 characters">
+          <div class="err-msg" id="regPassErr">Password must be at least 8 characters.</div>
+        </div>
+      `}
+    </div>
+    <button class="btn btn-primary" id="authSubmitBtn" onclick="submitAuth()" style="margin-top:6px;">
+      ${isLogin ? 'Log In' : 'Create Account'}
+    </button>
+    <div class="or-divider">OR CONTINUE WITH</div>
+    <div class="social-row">
+      <button class="social-btn tap">Google</button>
+      <button class="social-btn tap">Apple</button>
+    </div>
+    <p style="text-align:center; font-size:11.5px; color:var(--ink-faint); margin-top:auto; padding-top:20px;">
+      By continuing, you agree to Kargo's Terms of Service & Privacy Policy.
+    </p>
+  </div>`;
+}
+function submitAuth(){
+  const isLogin = S.authTab === 'login';
+  let ok = true;
+  const btn = el('authSubmitBtn');
+  if(isLogin){
+    ok = validate([
+      {id:'loginEmail', test:()=>/^\S+@\S+\.\S+$/.test(el('loginEmail').value)},
+      {id:'loginPass', test:()=>el('loginPass').value.length>=8},
+    ]);
+  } else {
+    ok = validate([
+      {id:'regName', test:()=>el('regName').value.trim().length>2},
+      {id:'regPhone', test:()=>/^\+?\d{10,13}$/.test(el('regPhone').value.replace(/\s/g,''))},
+      {id:'regEmail', test:()=>/^\S+@\S+\.\S+$/.test(el('regEmail').value)},
+      {id:'regPass', test:()=>el('regPass').value.length>=8},
+    ]);
+  }
+  if(!ok) return;
+  btn.innerHTML = `<span class="spinner"></span> ${isLogin?'Signing in…':'Creating account…'}`;
+  btn.disabled = true;
+  setTimeout(()=>{ S.history=[]; go('home',{push:false}); toast(isLogin? 'Welcome back, Alex!' : 'Account created — welcome to Kargo!'); }, 1000);
+}
+
+function Screen_home(){
+  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+  return `<div class="screen">
+    <div class="topbar" style="align-items:center;">
+      <div style="width:38px; height:38px; flex:0 0 auto;">${Logo(38)}</div>
+      <div class="flex1" style="padding-left:2px;">
+        <div class="eyebrow">${greeting}</div>
+        <h1 style="font-size:21px;">${S.user.name.split(' ')[0]}</h1>
+      </div>
+      <button class="icon-btn" onclick="go('notifications')" style="position:relative;">
+        ${I.bell}
+        ${S.notifUnread>0?`<span style="position:absolute; top:7px; right:8px; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 2px var(--surface);"></span>`:''}
+      </button>
+    </div>
+
+    <div class="px">
+      ${S.activeOrder ? `
+      <div class="card pad tap" onclick="go('tracking')" style="background:var(--ink); color:var(--bg); border:none; margin-bottom:18px; position:relative; overflow:hidden;">
+        <div class="row between mb-8">
+          <span class="badge" style="background:var(--accent); color:#fff;">In progress</span>
+          <span class="mono" style="font-size:11px; opacity:.7;">#${S.activeOrder.id}</span>
+        </div>
+        <div style="font-family:var(--font-display); font-size:17px; font-weight:700;">${STAGES[S.activeOrder.stage]}</div>
+        <div style="font-size:12.5px; opacity:.75; margin-top:4px;">${S.activeOrder.dropoff}</div>
+        <div class="row between mt-16">
+          <div class="row gap-8">
+            <div class="avatar" style="width:32px; height:32px; font-size:12px;">${RIDER.initials}</div>
+            <span style="font-size:12.5px; font-weight:600;">${RIDER.name} · Track live →</span>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <div class="card pad tap" onclick="startBooking()" style="background:linear-gradient(135deg, #FF7A45, var(--accent-dim)); border:none; color:#fff; margin-bottom:18px; box-shadow:0 14px 30px rgba(230,79,38,.32);">
+        <div class="row between">
+          <div>
+            <div style="font-family:var(--font-display); font-weight:700; font-size:19px;">Book a Delivery</div>
+            <div style="font-size:12.5px; opacity:.9; margin-top:3px;">Get a rider in minutes</div>
+          </div>
+          <div style="width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center;">${I.plus}</div>
+        </div>
+      </div>
+
+      <div class="row between mb-12"><h3 style="font-size:15px;">Quick actions</h3></div>
+      <div class="row gap-10 mb-20" style="display:grid; grid-template-columns:repeat(4,1fr);">
+        ${quickAction(I.activity,'Track','tracking', !!S.activeOrder)}
+        ${quickAction(I.doc,'History','history')}
+        ${quickAction(I.pin,'Addresses','addresses')}
+        ${quickAction(I.help,'Support','help')}
+      </div>
+
+      <div class="row between mb-12"><h3 style="font-size:15px;">Vouchers for you</h3><span style="font-size:12.5px; color:var(--accent); font-weight:700;" class="tap" onclick="go('promos')">See all</span></div>
+      <div class="card pad mb-20" style="display:flex; gap:12px; align-items:center; border-style:dashed; border-color:var(--accent);">
+        <div style="width:42px; height:42px; border-radius:12px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; color:var(--accent);">${I.gift}</div>
+        <div class="flex1">
+          <div style="font-weight:700; font-size:13.5px;">${PROMOS[0].desc}</div>
+          <div style="font-size:11.5px; color:var(--ink-faint);">Code <span class="mono">${PROMOS[0].code}</span> · ${PROMOS[0].expiry}</div>
+        </div>
+      </div>
+
+      <div class="row between mb-12"><h3 style="font-size:15px;">Recent deliveries</h3><span style="font-size:12.5px; color:var(--accent); font-weight:700;" class="tap" onclick="go('history')">See all</span></div>
+      ${HISTORY.slice(0,2).map(h=>historyRow(h)).join('')}
+      <div style="height:12px;"></div>
+    </div>
+  </div>`;
+}
+function quickAction(icon,label,target,disabled=false){
+  return `<button class="card tap" style="aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:10px; ${disabled?'opacity:.4;':''}" ${disabled?'disabled':`onclick="go('${target}')"`}>
+    <span style="width:34px; height:34px; border-radius:11px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center;">${icon}</span>
+    <span style="font-size:10.5px; font-weight:700; letter-spacing:.01em;">${label}</span>
+  </button>`;
+}
+function historyRow(h){
+  const badge = h.status==='Delivered' ? 'badge-teal' : h.status==='Cancelled' ? 'badge-danger' : 'badge-warn';
+  return `<div class="card pad tap mb-12" onclick="viewReceipt('${h.id}')">
+    <div class="row between">
+      <div class="row gap-12">
+        <div style="width:38px;height:38px;border-radius:11px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);">${I.box}</div>
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">${h.from} → ${h.to}</div>
+          <div class="mono" style="font-size:11px; color:var(--ink-faint); margin-top:2px;">#${h.id} · ${h.date}</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <span class="badge ${badge}">${h.status}</span>
+        <div style="font-size:12.5px; font-weight:700; margin-top:6px;">${h.amount? fmt(h.amount):'—'}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- NOTIFICATIONS ---------- */
+function Screen_notifications(){
+  S.notifUnread = 0;
+  return `<div class="screen">
+    ${Topbar('Notifications', {back:true})}
+    <div class="px">
+      ${NOTIFICATIONS.map(n=>`
+        <div class="card pad mb-12" style="display:flex; gap:12px; ${n.unread?'border-color:var(--accent);':''}">
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;color:var(--accent); flex:0 0 auto;">${n.icon}</div>
+          <div class="flex1">
+            <div class="row between"><span style="font-weight:700; font-size:13.5px;">${n.title}</span>${n.unread?'<span style="width:7px;height:7px;border-radius:50%;background:var(--accent);"></span>':''}</div>
+            <div style="font-size:12.5px; color:var(--ink-soft); margin-top:3px;">${n.body}</div>
+            <div style="font-size:11px; color:var(--ink-faint); margin-top:6px;" class="mono">${n.time}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- BOOKING WIZARD ---------- */
+function startBooking(){
+  S.booking = { ...S.booking, step:1, dropoff:'', recipientName:'', recipientPhone:'', itemDesc:'', category:'', notes:'', fragile:false, vehicle:null, promo:null, payment:'cash' };
+  go('booking');
+}
+function Screen_booking(){
+  const b = S.booking;
+  const steps = { 1:bookingStep1, 2:bookingStep2, 3:bookingStep3, 4:bookingStep4, 5:bookingStep5 };
+  const titles = {1:'Delivery route', 2:'Contact details', 3:'What are you sending?', 4:'Choose a vehicle', 5:'Review & confirm'};
+  return `<div class="screen" style="height:100%; display:flex; flex-direction:column;">
+    ${Topbar(titles[b.step], {back:true})}
+    <div class="wizard-dots">
+      ${[1,2,3,4,5].map(n=>`<div class="wdot ${b.step>n?'done':b.step===n?'active':''}"></div>`).join('')}
+    </div>
+    <div class="px flex1" style="overflow-y:auto; padding-bottom:14px;">
+      ${steps[b.step]()}
+    </div>
+    <div class="footer-bar split">
+      ${b.step>1 ? `<button class="btn btn-outline" style="width:auto; padding:0 22px;" onclick="bookingBack()">Back</button>` : ''}
+      <button class="btn btn-primary" onclick="bookingNext()">${b.step===5 ? 'Confirm Booking' : 'Continue'}</button>
+    </div>
+  </div>`;
+}
+function bookingBack(){ S.booking.step--; render(); }
+function bookingNext(){
+  const b = S.booking;
+  if(b.step===1){
+    const ok = validate([
+      {id:'pickupInput', test:()=>b.pickup.trim().length>4},
+      {id:'dropoffInput', test:()=>b.dropoff.trim().length>4},
+    ]);
+    if(!ok) return;
+  }
+  if(b.step===2){
+    const ok = validate([
+      {id:'senderNameInput', test:()=>b.senderName.trim().length>2},
+      {id:'senderPhoneInput', test:()=>/^\+?\d{10,13}$/.test(b.senderPhone.replace(/\s/g,''))},
+      {id:'recipientNameInput', test:()=>b.recipientName.trim().length>2},
+      {id:'recipientPhoneInput', test:()=>/^\+?\d{10,13}$/.test(b.recipientPhone.replace(/\s/g,''))},
+    ]);
+    if(!ok) return;
+  }
+  if(b.step===3){
+    const ok = validate([
+      {id:'itemDescInput', test:()=>b.itemDesc.trim().length>2},
+      {id:'categorySelectErrTarget', test:()=>!!b.category},
+    ]);
+    if(!ok) return;
+  }
+  if(b.step===4 && !b.vehicle){ toast('Please select a vehicle type'); return; }
+  if(b.step===5){ confirmBooking(); return; }
+  b.step++; render();
+}
+function bookingStep1(){
+  const b = S.booking;
+  return `
+    ${RoutePreview()}
+    <div class="field mt-20">
+      <label>Pickup location</label>
+      <div class="input-icon-wrap">${I.target.replace('currentColor','var(--accent)')}
+        <input class="input" id="pickupInput" placeholder="Enter pickup address" value="${b.pickup}" oninput="S.booking.pickup=this.value">
+      </div>
+      <div class="err-msg" id="pickupInputErr">Enter a valid pickup location.</div>
+    </div>
+    <div class="field">
+      <label>Drop-off location</label>
+      <div class="input-icon-wrap">${I.pinFilled.replace('currentColor','var(--teal)')}
+        <input class="input" id="dropoffInput" placeholder="Enter drop-off address" value="${b.dropoff}" oninput="S.booking.dropoff=this.value">
+      </div>
+      <div class="err-msg" id="dropoffInputErr">Enter a valid drop-off location.</div>
+    </div>
+    <label style="font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px; display:block;">Saved addresses</label>
+    ${SAVED_ADDRESSES.map(a=>`
+      <div class="card pad tap mb-10" style="display:flex; gap:12px; align-items:center;" onclick="pickSavedAddress('${a.address.replace(/'/g,"\\'")}')">
+        <div style="width:34px;height:34px;border-radius:10px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);">${I.pin}</div>
+        <div class="flex1"><div style="font-weight:700; font-size:13px;">${a.label}</div><div style="font-size:12px; color:var(--ink-faint);">${a.address}</div></div>
+      </div>`).join('')}
+  `;
+}
+function pickSavedAddress(addr){
+  if(!S.booking.pickup || S.booking.pickup.length<4){ S.booking.pickup = addr; }
+  else { S.booking.dropoff = addr; }
+  render();
+}
+function bookingStep2(){
+  const b = S.booking;
+  return `
+    <div class="card pad mb-20">
+      <div class="row between mb-12">
+        <h3 style="font-size:14px;">Sender information</h3>
+        <label class="row gap-8" style="font-size:11.5px; font-weight:600; color:var(--ink-soft);">
+          <input type="checkbox" ${b.useMyInfo?'checked':''} onchange="toggleUseMyInfo(this.checked)" style="accent-color:var(--accent);"> Use my info
+        </label>
+      </div>
+      <div class="field"><label>Full name</label>
+        <input class="input" id="senderNameInput" value="${b.senderName}" ${b.useMyInfo?'disabled':''} oninput="S.booking.senderName=this.value">
+        <div class="err-msg" id="senderNameInputErr">Enter sender's full name.</div>
+      </div>
+      <div class="field" style="margin-bottom:0;"><label>Mobile number</label>
+        <input class="input" id="senderPhoneInput" value="${b.senderPhone}" ${b.useMyInfo?'disabled':''} oninput="S.booking.senderPhone=this.value">
+        <div class="err-msg" id="senderPhoneInputErr">Enter a valid mobile number.</div>
+      </div>
+    </div>
+    <div class="card pad">
+      <h3 style="font-size:14px; margin-bottom:12px;">Recipient information</h3>
+      <div class="field"><label>Full name</label>
+        <input class="input" id="recipientNameInput" placeholder="Recipient's full name" value="${b.recipientName}" oninput="S.booking.recipientName=this.value">
+        <div class="err-msg" id="recipientNameInputErr">Enter recipient's full name.</div>
+      </div>
+      <div class="field" style="margin-bottom:0;"><label>Mobile number</label>
+        <input class="input" id="recipientPhoneInput" placeholder="+63 9XX XXX XXXX" value="${b.recipientPhone}" oninput="S.booking.recipientPhone=this.value">
+        <div class="err-msg" id="recipientPhoneInputErr">Enter a valid mobile number.</div>
+      </div>
+    </div>
+  `;
+}
+function toggleUseMyInfo(v){ S.booking.useMyInfo=v; if(v){ S.booking.senderName=S.user.name; S.booking.senderPhone=S.user.phone; } render(); }
+function bookingStep3(){
+  const b = S.booking;
+  return `
+    <div class="field">
+      <label>Item description</label>
+      <textarea class="textarea" id="itemDescInput" placeholder="e.g. 2 sealed boxes of office supplies" oninput="S.booking.itemDesc=this.value">${b.itemDesc}</textarea>
+      <div class="err-msg" id="itemDescInputErr">Describe the item you're sending.</div>
+    </div>
+    <div class="field">
+      <label>Item category</label>
+      <div class="chip-row" id="categorySelectErrTarget">
+        ${CATEGORIES.map(c=>`<button class="chip ${b.category===c?'active accent-active':''}" onclick="S.booking.category='${c}'; render();">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="field">
+      <label>Delivery notes (optional)</label>
+      <textarea class="textarea" placeholder="e.g. Call upon arrival, leave with guard" oninput="S.booking.notes=this.value" style="min-height:64px;">${b.notes}</textarea>
+    </div>
+    <div class="card pad row between tap" onclick="S.booking.fragile=!S.booking.fragile; render();">
+      <div class="row gap-10"><span style="color:var(--warn);">${I.shield}</span><div><div style="font-weight:700; font-size:13.5px;">Mark as fragile</div><div style="font-size:11.5px; color:var(--ink-faint);">Rider will handle with extra care</div></div></div>
+      <div class="switch ${b.fragile?'on':''}"><i></i></div>
+    </div>
+  `;
+}
+function bookingStep4(){
+  const b = S.booking;
+  return `<div>
+    <div class="row between mb-12"><span class="eyebrow">Estimated distance</span><span class="mono" style="font-weight:700; font-size:13px;">${b.distanceKm} km</span></div>
+    ${VEHICLES.map(v=>{
+      const fare = Math.round(v.base + v.perKm*b.distanceKm);
+      return `<div class="vcard tap ${b.vehicle===v.id?'selected':''}" onclick="S.booking.vehicle='${v.id}'; render();">
+        <div class="vicon">${v.icon}</div>
+        <div class="flex1">
+          <div class="row between"><span style="font-weight:700; font-size:14.5px;">${v.name}</span><span style="font-family:var(--font-display); font-weight:700; font-size:15px;">${fmt(fare)}</span></div>
+          <div style="font-size:11.5px; color:var(--ink-faint); margin-top:2px;">${v.desc}</div>
+          <div class="row gap-8 mt-8"><span style="color:var(--ink-faint);">${I.clock}</span><span style="font-size:11.5px; color:var(--ink-soft); font-weight:600;">${v.eta} away</span></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function bookingStep5(){
+  const b = S.booking;
+  const v = VEHICLES.find(x=>x.id===b.vehicle);
+  const fare = Math.round(v.base + v.perKm*b.distanceKm);
+  const discount = b.promo ? Math.min(50, Math.round(fare*0.1)) : 0;
+  const total = fare - discount;
+  return `
+    <div class="card pad mb-16">
+      <div class="row gap-12 mb-12">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px; padding-top:3px;">
+          <div style="width:9px;height:9px;border-radius:50%;background:var(--accent);"></div>
+          <div style="width:1.5px; height:26px; background:var(--border);"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:var(--teal);"></div>
+        </div>
+        <div class="flex1">
+          <div style="font-size:13px; font-weight:600;">${b.pickup}</div>
+          <div style="height:22px;"></div>
+          <div style="font-size:13px; font-weight:600;">${b.dropoff}</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="row between" style="font-size:12.5px;"><span class="text-soft">Recipient</span><span style="font-weight:600;">${b.recipientName}</span></div>
+      <div class="row between mt-8" style="font-size:12.5px;"><span class="text-soft">Item</span><span style="font-weight:600; text-align:right; max-width:60%;">${b.itemDesc} ${b.fragile?'· Fragile':''}</span></div>
+      <div class="row between mt-8" style="font-size:12.5px;"><span class="text-soft">Vehicle</span><span style="font-weight:600;">${v.name}</span></div>
+    </div>
+
+    <label style="font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px; display:block;">Payment method</label>
+    ${PAYMENT_METHODS.map(p=>`<div class="card pad tap mb-10" style="display:flex; align-items:center; gap:12px; ${b.payment===p.id?'border-color:var(--accent);':''}" onclick="S.booking.payment='${p.id}'; render();">
+      <span style="color:var(--ink-soft);">${p.icon}</span>
+      <div class="flex1"><div style="font-weight:700; font-size:13px;">${p.label}</div><div style="font-size:11.5px; color:var(--ink-faint);">${p.sub}</div></div>
+      <div style="width:19px;height:19px;border-radius:50%;border:2px solid ${b.payment===p.id?'var(--accent)':'var(--border)'}; display:flex; align-items:center; justify-content:center;">${b.payment===p.id?`<div style="width:10px;height:10px;border-radius:50%;background:var(--accent);"></div>`:''}</div>
+    </div>`).join('')}
+
+    <div class="row gap-10 mt-16 mb-16">
+      <input class="input flex1" placeholder="Enter promo code" id="promoInput" value="${b.promo||''}">
+      <button class="btn btn-ghost btn-sm" style="width:auto; padding:0 18px;" onclick="applyPromo()">Apply</button>
+    </div>
+
+    <div class="card pad">
+      <div class="row between" style="font-size:13px;"><span class="text-soft">Delivery fee</span><span>${fmt(fare)}</span></div>
+      ${discount>0?`<div class="row between mt-8" style="font-size:13px; color:var(--teal);"><span>Promo discount</span><span>−${fmt(discount)}</span></div>`:''}
+      <div class="divider"></div>
+      <div class="row between"><span style="font-weight:700;">Total</span><span style="font-family:var(--font-display); font-weight:700; font-size:20px;">${fmt(total)}</span></div>
+    </div>
+  `;
+}
+function applyPromo(){
+  const v = el('promoInput').value.trim().toUpperCase();
+  const match = PROMOS.find(p=>p.code===v);
+  if(match){ S.booking.promo = v; toast('Promo code applied!'); render(); }
+  else toast('Invalid or expired promo code');
+}
+function confirmBooking(){
+  const b = S.booking;
+  const v = VEHICLES.find(x=>x.id===b.vehicle);
+  const fare = Math.round(v.base + v.perKm*b.distanceKm);
+  const discount = b.promo ? Math.min(50, Math.round(fare*0.1)) : 0;
+  S.activeOrder = {
+    id: 'KG-' + Math.floor(80000+Math.random()*9999),
+    stage: 0, pickup:b.pickup, dropoff:b.dropoff, vehicle:v.name, fare, discount, total:fare-discount,
+    payment:b.payment, category:b.category, itemDesc:b.itemDesc, recipientName:b.recipientName,
+    date: 'Jul 9, 2026',
+  };
+  S.history=[];
+  go('finding',{push:false});
+}
+
+/* ---------- FINDING RIDER ---------- */
+function Screen_finding(){
+  setTimeout(()=>{
+    if(S.screen!=='finding') return;
+    S.activeOrder.stage = 1;
+    go('tracking',{push:false});
+    toast('Marco accepted your delivery!');
+    startStageProgression();
+  }, 2600);
+  return `<div class="screen" style="height:100%; display:flex; flex-direction:column;">
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:0 30px;">
+      <div style="position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center;">
+        <div style="position:absolute; inset:0; border-radius:50%; border:2px solid var(--accent-soft); animation:pulseRing 1.6s ease-out infinite;"></div>
+        <div style="position:absolute; inset:18px; border-radius:50%; border:2px solid var(--accent-soft); animation:pulseRing 1.6s ease-out infinite .4s;"></div>
+        <div style="width:76px; height:76px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 16px 32px rgba(230,79,38,.35);">${I.truck}</div>
+      </div>
+      <div style="text-align:center;">
+        <h2 style="font-size:19px; margin-bottom:6px;">Finding your rider…</h2>
+        <p class="text-soft" style="font-size:13px;">Matching you with nearby riders for the best ETA</p>
+      </div>
+      <div class="mono" style="font-size:11.5px; color:var(--ink-faint);">Order #${S.activeOrder.id}</div>
+    </div>
+    <div class="footer-bar"><button class="btn btn-outline" onclick="cancelSearch()">Cancel Search</button></div>
+  </div>`;
+}
+function cancelSearch(){ S.activeOrder=null; S.history=[]; go('home',{push:false}); toast('Booking cancelled'); }
+
+/* ---------- LIVE TRACKING ---------- */
+let stageTimer = null;
+function startStageProgression(){
+  clearInterval(stageTimer);
+  stageTimer = setInterval(()=>{
+    if(!S.activeOrder || S.screen!=='tracking' && S.screen!=='chat'){ }
+    if(!S.activeOrder) { clearInterval(stageTimer); return; }
+    if(S.activeOrder.stage < STAGES.length-1){
+      S.activeOrder.stage++;
+      if(S.screen==='tracking') render();
+      if(S.activeOrder.stage===STAGES.length-1){
+        clearInterval(stageTimer);
+        toast('Delivered! Please rate your rider.');
+        setTimeout(()=>{ if(S.activeOrder) go('rating'); }, 1400);
+      }
+    } else { clearInterval(stageTimer); }
+  }, 3600);
+}
+function Screen_tracking(){
+  const o = S.activeOrder;
+  if(!o) return Screen_home();
+  const times = ['just now','1 min ago','2 min ago','4 min ago','6 min ago','9 min ago'];
+  return `<div class="screen" style="height:100%; display:flex; flex-direction:column;">
+    ${Topbar('Live Tracking', {back:true, right:`<span class="mono" style="font-size:11px; color:var(--ink-faint);">#${o.id}</span>`})}
+    <div class="px" style="padding-bottom:24px;">
+      <div class="route-preview" style="height:190px; margin-bottom:18px;">
+        <svg viewBox="0 0 340 190">
+          <g class="route-grid">${[0,1,2,3,4,5].map(i=>`<line x1="0" y1="${i*38}" x2="340" y2="${i*38}"/>`).join('')}${[0,1,2,3,4,5,6,7,8].map(i=>`<line x1="${i*42}" y1="0" x2="${i*42}" y2="190"/>`).join('')}</g>
+          <path id="rp" class="route-path animate" d="M35,150 C90,60 220,170 305,45"/>
+          <circle class="route-dot-a" cx="35" cy="150" r="6"/>
+          <circle class="route-dot-b" cx="305" cy="45" r="6"/>
+          <circle class="route-pulse" cx="305" cy="45" r="6"/>
+          <g>
+            <circle r="11" fill="var(--accent)" opacity=".18"><animateMotion dur="6s" repeatCount="indefinite" path="M35,150 C90,60 220,170 305,45"/></circle>
+            <g><animateMotion dur="6s" repeatCount="indefinite" path="M35,150 C90,60 220,170 305,45"/>
+              <circle r="7" fill="var(--accent)"/>
+            </g>
+          </g>
+        </svg>
+        <div style="position:absolute; top:12px; left:12px; background:var(--surface); padding:6px 12px; border-radius:var(--radius-pill); box-shadow:var(--shadow-sm); font-size:11.5px; font-weight:700;">
+          ETA ${o.stage<5 ? '11 min' : 'Arrived'}
+        </div>
+      </div>
+
+      <div class="card pad mb-16" style="display:flex; align-items:center; gap:12px;">
+        <div class="avatar">${RIDER.initials}</div>
+        <div class="flex1">
+          <div style="font-weight:700; font-size:14.5px;">${RIDER.name}</div>
+          <div class="row gap-8" style="margin-top:2px;">${Stars(RIDER.rating,11)}<span style="font-size:11.5px; color:var(--ink-faint);">${RIDER.rating} · ${RIDER.trips} trips</span></div>
+          <div style="font-size:11.5px; color:var(--ink-faint); margin-top:2px;">${RIDER.vehicle} · <span class="mono">${RIDER.plate}</span></div>
+        </div>
+        <button class="icon-btn accent" onclick="go('chat')">${I.chat}</button>
+        <button class="icon-btn" onclick="toast('Calling ${RIDER.name}…')">${I.phone}</button>
+      </div>
+
+      <div class="card pad mb-16">
+        <h3 style="font-size:14px; margin-bottom:16px;">Delivery status</h3>
+        <div class="timeline">
+          ${STAGES.map((s,i)=>`
+            <div class="tl-item ${i<o.stage?'done':i===o.stage?'current':''}">
+              <div class="tl-dot">${i<o.stage?I.check:i===o.stage?'<span class="spinner" style="border-color:rgba(255,255,255,.4); border-top-color:#fff;"></span>':''}</div>
+              <div>
+                <div class="tl-title">${s}</div>
+                ${i<=o.stage?`<div class="tl-time">${times[o.stage-i]||'in progress'}</div>`:''}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card pad mb-16">
+        <div class="row between" style="font-size:12.5px;"><span class="text-soft">Item</span><span style="font-weight:600;">${o.itemDesc}</span></div>
+        <div class="row between mt-8" style="font-size:12.5px;"><span class="text-soft">Recipient</span><span style="font-weight:600;">${o.recipientName}</span></div>
+        <div class="row between mt-8" style="font-size:12.5px;"><span class="text-soft">Vehicle</span><span style="font-weight:600;">${o.vehicle}</span></div>
+        <div class="row between mt-8" style="font-size:12.5px;"><span class="text-soft">Total</span><span style="font-weight:700;">${fmt(o.total)}</span></div>
+      </div>
+
+      ${o.stage<2 ? `<button class="btn btn-danger-outline" onclick="cancelActiveDelivery()">Cancel Delivery</button>` : `<button class="btn btn-ghost" onclick="toast('Delivery in progress — thanks for your patience!')">Report an Issue</button>`}
+    </div>
+  </div>`;
+}
+function cancelActiveDelivery(){
+  clearInterval(stageTimer);
+  S.activeOrder = null; S.history=[]; go('home',{push:false}); toast('Delivery cancelled');
+}
+
+/* ---------- CHAT ---------- */
+function Screen_chat(){
+  if(S.chatMessages.length===0){
+    S.chatMessages = [
+      {from:'them', text:"Hi Alex! I'm Marco, on my way to the pickup point.", time:'9:41 AM'},
+      {from:'them', text:'I\'ll be there in about 5 minutes.', time:'9:41 AM'},
+    ];
+  }
+  return `<div class="screen" style="height:100%; display:flex; flex-direction:column;">
+    <div class="topbar">
+      <button class="icon-btn" onclick="goBack()">${I.back}</button>
+      <div class="avatar" style="width:36px; height:36px; font-size:12px;">${RIDER.initials}</div>
+      <div class="flex1"><div style="font-weight:700; font-size:14px;">${RIDER.name}</div><div style="font-size:11px; color:var(--teal); font-weight:600;">● Online</div></div>
+      <button class="icon-btn" onclick="toast('Calling ${RIDER.name}…')">${I.phone}</button>
+    </div>
+    <div class="px flex1" style="overflow-y:auto; display:flex; flex-direction:column;" id="chatScroll">
+      ${S.chatMessages.map(m=>`<div style="display:flex; flex-direction:column; align-items:${m.from==='me'?'flex-end':'flex-start'};"><div class="bubble ${m.from}">${m.text}</div><div class="bubble-time">${m.time}</div></div>`).join('')}
+    </div>
+    <div class="chip-row px" style="padding-top:8px; padding-bottom:8px;">
+      <button class="chip" onclick="quickReply('On my way to meet you.')">On my way</button>
+      <button class="chip" onclick="quickReply('Please call when you arrive.')">Call on arrival</button>
+      <button class="chip" onclick="quickReply('Thank you!')">Thank you</button>
+    </div>
+    <div class="footer-bar" style="display:flex; gap:10px;">
+      <input class="input flex1" id="chatInput" placeholder="Type a message…">
+      <button class="icon-btn accent" onclick="sendChat()">${I.send}</button>
+    </div>
+  </div>`;
+}
+function quickReply(text){ el('chatInput').value = text; sendChat(); }
+function sendChat(){
+  const input = el('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  S.chatMessages.push({from:'me', text, time:'9:42 AM'});
+  render();
+  setTimeout(()=>{ el('chatScroll').scrollTop = el('chatScroll').scrollHeight; }, 30);
+  setTimeout(()=>{
+    S.chatMessages.push({from:'them', text:'Got it, thanks for letting me know!', time:'9:43 AM'});
+    if(S.screen==='chat') { render(); setTimeout(()=>{ el('chatScroll').scrollTop = el('chatScroll').scrollHeight; }, 30); }
+  }, 1400);
+}
+
+/* ---------- RATING ---------- */
+function Screen_rating(){
+  return `<div class="screen" style="height:100%; display:flex; flex-direction:column;">
+    <div class="px" style="padding-top:30px; flex:1;">
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="color:var(--teal); margin:0 auto 14px;">${I.checkCircle}</div>
+        <h1 style="font-size:21px;">Delivered successfully</h1>
+        <p class="text-soft" style="font-size:13px; margin-top:4px;">How was your experience with ${RIDER.name}?</p>
+      </div>
+      <div style="display:flex; justify-content:center; margin-bottom:22px;">
+        <div class="avatar" style="width:64px; height:64px; font-size:20px;">${RIDER.initials}</div>
+      </div>
+      <div style="display:flex; justify-content:center; gap:10px; margin-bottom:26px;" id="starRow">
+        ${[1,2,3,4,5].map(n=>`<button onclick="setRating(${n})" style="width:34px; height:34px; color:${S.ratingStars>=n?'var(--warn)':'var(--border)'};">${S.ratingStars>=n?I.star:I.starOutline}</button>`).join('')}
+      </div>
+      <div class="chip-row" style="justify-content:center; margin-bottom:20px;">
+        ${['Fast pickup','Careful handling','Friendly','On time','Great communication'].map(t=>`<button class="chip ${S.ratingTags.includes(t)?'active accent-active':''}" onclick="toggleTag('${t}')">${t}</button>`).join('')}
+      </div>
+      <textarea class="textarea" placeholder="Leave a comment (optional)" style="margin-bottom:18px;"></textarea>
+      <label style="font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px; display:block;">Add a tip</label>
+      <div class="chip-row mb-20">
+        ${['None','₱20','₱50','₱100'].map(t=>`<button class="chip">${t}</button>`).join('')}
+      </div>
+    </div>
+    <div class="footer-bar"><button class="btn btn-primary" ${S.ratingStars===0?'disabled':''} onclick="submitRating()">Submit Rating</button></div>
+  </div>`;
+}
+function setRating(n){ S.ratingStars=n; render(); }
+function toggleTag(t){ S.ratingTags = S.ratingTags.includes(t) ? S.ratingTags.filter(x=>x!==t) : [...S.ratingTags,t]; render(); }
+function submitRating(){
+  HISTORY.unshift({ id:S.activeOrder.id, date:S.activeOrder.date, status:'Delivered', from:S.activeOrder.pickup.split(',')[0], to:S.activeOrder.dropoff.split(',')[0]||'Drop-off', vehicle:S.activeOrder.vehicle, amount:S.activeOrder.total });
+  const order = S.activeOrder;
+  S.activeOrder = null; S.ratingStars=0; S.ratingTags=[]; S.chatMessages=[];
+  S.history=[];
+  go('receipt', {push:false});
+  S._lastReceipt = order;
+  toast('Thanks for rating your rider!');
+}
+
+/* ---------- RECEIPT ---------- */
+function viewReceipt(id){
+  const h = HISTORY.find(x=>x.id===id);
+  S._lastReceipt = { id:h.id, date:h.date, pickup:h.from, dropoff:h.to, vehicle:h.vehicle, total:h.amount, fare:h.amount, discount:0, payment:'card1', itemDesc:'Package contents', recipientName:'Recipient' };
+  go('receipt');
+}
+function Screen_receipt(){
+  const r = S._lastReceipt || { id:'KG-00000', date:'—', pickup:'—', dropoff:'—', vehicle:'—', total:0, fare:0, discount:0, payment:'cash' };
+  const pm = PAYMENT_METHODS.find(p=>p.id===r.payment) || PAYMENT_METHODS[0];
+  return `<div class="screen">
+    ${Topbar('Receipt', {back:true, right:`<button class="icon-btn" onclick="toast('Receipt shared as PDF')">${I.download}</button>`})}
+    <div class="px">
+      <div class="card pad" style="text-align:center; margin-bottom:18px;">
+        <div style="color:var(--teal); margin-bottom:10px;">${I.checkCircle}</div>
+        <div style="font-weight:700; font-size:16px;">Delivery Completed</div>
+        <div class="mono" style="font-size:11.5px; color:var(--ink-faint); margin-top:4px;">#${r.id} · ${r.date}</div>
+      </div>
+      <div class="card pad mb-16">
+        <div class="row gap-12 mb-4">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:3px; padding-top:3px;">
+            <div style="width:9px;height:9px;border-radius:50%;background:var(--accent);"></div>
+            <div style="width:1.5px; height:26px; background:var(--border);"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:var(--teal);"></div>
+          </div>
+          <div class="flex1">
+            <div style="font-size:13px; font-weight:600;">${r.pickup}</div>
+            <div style="height:22px;"></div>
+            <div style="font-size:13px; font-weight:600;">${r.dropoff}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card pad mb-16">
+        <h3 style="font-size:14px; margin-bottom:12px;">Payment summary</h3>
+        <div class="row between" style="font-size:13px;"><span class="text-soft">Delivery fee</span><span>${fmt(r.fare)}</span></div>
+        ${r.discount>0?`<div class="row between mt-8" style="font-size:13px; color:var(--teal);"><span>Promo discount</span><span>−${fmt(r.discount)}</span></div>`:''}
+        <div class="divider"></div>
+        <div class="row between mb-8"><span style="font-weight:700;">Total paid</span><span style="font-family:var(--font-display); font-weight:700; font-size:18px;">${fmt(r.total)}</span></div>
+        <div class="row gap-8"><span style="color:var(--ink-soft);">${pm.icon}</span><span style="font-size:12.5px; color:var(--ink-soft);">${pm.label}</span></div>
+      </div>
+      <div class="row gap-10 mb-20">
+        <button class="btn btn-outline" onclick="toast('Invoice downloaded')">Download Invoice</button>
+        <button class="btn btn-dark" onclick="S.history=[]; go('home',{push:false})">Done</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- HISTORY ---------- */
+let historyFilter = 'All', historySearch = '';
+function Screen_history(){
+  const filtered = HISTORY.filter(h=>(historyFilter==='All'||h.status===historyFilter) && (h.id.toLowerCase().includes(historySearch.toLowerCase()) || h.to.toLowerCase().includes(historySearch.toLowerCase()) || h.from.toLowerCase().includes(historySearch.toLowerCase())));
+  return `<div class="screen">
+    ${Topbar('Delivery History')}
+    <div class="px">
+      <div class="input-icon-wrap mb-12">${I.search}
+        <input class="input" placeholder="Search by ID or address" value="${historySearch}" oninput="historySearch=this.value; render();">
+      </div>
+      <div class="chip-row mb-16">
+        ${['All','Delivered','In Progress','Cancelled'].map(f=>`<button class="chip ${historyFilter===f?'active':''}" onclick="historyFilter='${f}'; render();">${f}</button>`).join('')}
+      </div>
+      ${filtered.length ? filtered.map(h=>historyRow(h)).join('') : `<div class="empty"><div style="width:56px;height:56px;border-radius:16px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);">${I.box}</div><div style="font-weight:700; color:var(--ink);">No deliveries found</div><div style="font-size:12.5px;">Try a different search or filter.</div></div>`}
+    </div>
+  </div>`;
+}
+
+/* ---------- WALLET (payments + promos) ---------- */
+function Screen_wallet(){
+  return `<div class="screen">
+    ${Topbar('Wallet')}
+    <div class="px">
+      <div class="card pad mb-20" style="background:linear-gradient(135deg, var(--ink), #262b38); color:#fff; border:none;">
+        <div class="eyebrow" style="color:#9aa3b4;">Kargo Wallet Balance</div>
+        <div style="font-family:var(--font-display); font-size:28px; font-weight:700; margin-top:6px;">₱1,240.50</div>
+        <div class="row gap-10 mt-16">
+          <button class="btn btn-sm" style="width:auto; padding:0 16px; background:var(--accent); color:#fff;" onclick="toast('Top-up flow started')">Top Up</button>
+          <button class="btn btn-sm btn-outline" style="width:auto; padding:0 16px; border-color:rgba(255,255,255,.3); color:#fff;" onclick="toast('Cash-out requested')">Cash Out</button>
+        </div>
+      </div>
+
+      <div class="row between mb-12"><h3 style="font-size:15px;">Payment methods</h3><button class="icon-btn" onclick="S.cardModalOpen=true; render();">${I.plus}</button></div>
+      ${PAYMENT_METHODS.map(p=>`<div class="card pad mb-10" style="display:flex; align-items:center; gap:12px;">
+        <span style="color:var(--ink-soft);">${p.icon}</span>
+        <div class="flex1"><div style="font-weight:700; font-size:13px;">${p.label}</div><div style="font-size:11.5px; color:var(--ink-faint);">${p.sub}</div></div>
+        ${p.isDefault?'<span class="badge badge-teal">Default</span>':''}
+      </div>`).join('')}
+
+      <div class="row between mt-20 mb-12"><h3 style="font-size:15px;">Your vouchers</h3></div>
+      ${PROMOS.map(p=>`
+      <div class="card pad mb-12" style="display:flex; gap:12px; align-items:center;">
+        <div style="width:42px; height:42px; border-radius:12px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; color:var(--accent); flex:0 0 auto;">${I.gift}</div>
+        <div class="flex1">
+          <div style="font-weight:700; font-size:13.5px;">${p.desc}</div>
+          <div style="font-size:11.5px; color:var(--ink-faint); margin-top:2px;">${p.min} · ${p.expiry}</div>
+        </div>
+        <button class="btn btn-sm btn-ghost" style="width:auto; padding:0 14px;" onclick="copyPromo('${p.code}')">${p.code}</button>
+      </div>`).join('')}
+    </div>
+  </div>${S.cardModalOpen?CardModal():''}`;
+}
+function copyPromo(code){ toast(`Code ${code} copied!`); }
+function CardModal(){
+  return `<div style="position:absolute; inset:0; background:rgba(0,0,0,.5); z-index:300; display:flex; align-items:flex-end;" onclick="if(event.target===this){S.cardModalOpen=false;render();}">
+    <div class="card" style="width:100%; border-radius:24px 24px 0 0; padding:22px; animation:slideIn .25s;">
+      <div class="row between mb-16"><h3 style="font-size:16px;">Add card</h3><button class="icon-btn" onclick="S.cardModalOpen=false; render();">${I.x}</button></div>
+      <div class="field"><label>Card number</label><input class="input" placeholder="1234 5678 9012 3456"></div>
+      <div class="row gap-12">
+        <div class="field flex1"><label>Expiry</label><input class="input" placeholder="MM/YY"></div>
+        <div class="field flex1"><label>CVV</label><input class="input" placeholder="•••"></div>
+      </div>
+      <button class="btn btn-primary" onclick="S.cardModalOpen=false; render(); toast('Card added successfully');">Save Card</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- ADDRESSES ---------- */
+function Screen_addresses(){
+  const icons = {home:I.home, work:I.box, star:I.starOutline};
+  return `<div class="screen">
+    ${Topbar('Saved Addresses', {back:true, right:`<button class="icon-btn" onclick="S.addrModalOpen=true; render();">${I.plus}</button>`})}
+    <div class="px">
+      ${SAVED_ADDRESSES.map(a=>`<div class="card pad mb-12" style="display:flex; gap:12px; align-items:center;">
+        <div style="width:38px;height:38px;border-radius:11px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;color:var(--accent);">${icons[a.icon]}</div>
+        <div class="flex1"><div style="font-weight:700; font-size:13.5px;">${a.label}</div><div style="font-size:12px; color:var(--ink-faint);">${a.address}</div></div>
+        <button class="icon-btn" style="width:32px;height:32px;" onclick="toast('Edit address form opened')">${I.edit}</button>
+      </div>`).join('')}
+    </div>
+  </div>${S.addrModalOpen?AddrModal():''}`;
+}
+function AddrModal(){
+  return `<div style="position:absolute; inset:0; background:rgba(0,0,0,.5); z-index:300; display:flex; align-items:flex-end;" onclick="if(event.target===this){S.addrModalOpen=false;render();}">
+    <div class="card" style="width:100%; border-radius:24px 24px 0 0; padding:22px;">
+      <div class="row between mb-16"><h3 style="font-size:16px;">Add address</h3><button class="icon-btn" onclick="S.addrModalOpen=false; render();">${I.x}</button></div>
+      <div class="field"><label>Label</label><div class="chip-row"><button class="chip active accent-active">Home</button><button class="chip">Work</button><button class="chip">Favorite</button></div></div>
+      <div class="field"><label>Full address</label><textarea class="textarea" placeholder="Enter complete address"></textarea></div>
+      <button class="btn btn-primary" onclick="S.addrModalOpen=false; render(); toast('Address saved');">Save Address</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- PROMOS (standalone deep link from home) ---------- */
+function Screen_promos(){
+  return `<div class="screen">
+    ${Topbar('Vouchers & Promos', {back:true})}
+    <div class="px">
+      <div class="row gap-10 mb-16">
+        <input class="input flex1" placeholder="Have a code? Enter it here">
+        <button class="btn btn-ghost btn-sm" style="width:auto; padding:0 16px;" onclick="toast('Promo applied to your next order')">Apply</button>
+      </div>
+      ${PROMOS.map(p=>`
+      <div class="card pad mb-12" style="display:flex; gap:12px; align-items:center;">
+        <div style="width:42px; height:42px; border-radius:12px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; color:var(--accent); flex:0 0 auto;">${I.gift}</div>
+        <div class="flex1">
+          <div style="font-weight:700; font-size:13.5px;">${p.desc}</div>
+          <div style="font-size:11.5px; color:var(--ink-faint); margin-top:2px;">${p.min} · ${p.expiry}</div>
+        </div>
+        <button class="btn btn-sm btn-ghost" style="width:auto; padding:0 14px;" onclick="copyPromo('${p.code}')">${p.code}</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- PROFILE ---------- */
+function Screen_profile(){
+  const menu = [
+    {icon:I.pin, label:'Saved Addresses', target:'addresses'},
+    {icon:I.wallet, label:'Payment Methods', target:'wallet'},
+    {icon:I.gift, label:'Vouchers & Promos', target:'promos'},
+    {icon:I.bell, label:'Notifications', target:'notifications'},
+    {icon:I.help, label:'Help Center', target:'help'},
+  ];
+  return `<div class="screen">
+    ${Topbar('Profile')}
+    <div class="px">
+      <div class="card pad mb-20" style="display:flex; align-items:center; gap:14px;">
+        <div class="avatar" style="width:56px; height:56px; font-size:18px;">${S.user.initials}</div>
+        <div class="flex1"><div style="font-weight:700; font-size:16px;">${S.user.name}</div><div style="font-size:12px; color:var(--ink-faint);">${S.user.phone}</div><div style="font-size:12px; color:var(--ink-faint);">${S.user.email}</div></div>
+        <button class="icon-btn" onclick="toast('Edit profile form opened')">${I.edit}</button>
+      </div>
+
+      <div class="card mb-16" style="overflow:hidden;">
+        ${menu.map((m,i)=>`<button class="tap" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; ${i<menu.length-1?'border-bottom:1px solid var(--border);':''}" onclick="go('${m.target}')">
+          <span style="width:34px; height:34px; border-radius:11px; background:var(--surface-alt); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex:0 0 auto;">${m.icon}</span><span class="flex1" style="text-align:left; font-weight:600; font-size:13.5px;">${m.label}</span><span style="color:var(--ink-faint);">${I.chevron}</span>
+        </button>`).join('')}
+      </div>
+
+      <div class="card pad row between mb-16">
+        <div class="row gap-10"><span style="color:var(--ink-soft);">${I.moon}</span><span style="font-weight:600; font-size:13.5px;">Dark mode</span></div>
+        <div class="switch ${S.theme==='dark'?'on':''}" onclick="toggleTheme()"><i></i></div>
+      </div>
+
+      <button class="btn btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="doLogout()">
+        <span style="display:flex; align-items:center; gap:8px;">${I.logout} Log Out</span>
+      </button>
+      <div style="height:16px;"></div>
+    </div>
+  </div>`;
+}
+function doLogout(){ S.activeOrder=null; S.history=[]; S.authTab='login'; go('auth',{push:false}); toast('Logged out successfully'); }
+
+/* ---------- HELP CENTER ---------- */
+function Screen_help(){
+  const faqs = [
+    {q:'How do I track my delivery?', a:'Open the Activity tab or tap the active delivery card on Home to see live rider location and status updates.'},
+    {q:'What if my item is lost or damaged?', a:'Contact support immediately via chat below. All deliveries are covered by Kargo Protect for eligible items.'},
+    {q:'Can I change the drop-off address after booking?', a:'You can request an address change by chatting with your rider before the item is picked up.'},
+    {q:'How are delivery fees calculated?', a:'Fees are based on distance, vehicle type, and real-time demand in your area.'},
+  ];
+  return `<div class="screen">
+    ${Topbar('Help Center', {back:true})}
+    <div class="px">
+      <div class="card pad mb-20" style="background:var(--danger-soft); border-color:var(--danger); display:flex; align-items:center; gap:14px;">
+        <div style="width:42px; height:42px; border-radius:12px; background:var(--danger); color:#fff; display:flex; align-items:center; justify-content:center; flex:0 0 auto;">${I.siren}</div>
+        <div class="flex1"><div style="font-weight:700; font-size:13.5px; color:var(--danger);">Emergency assistance</div><div style="font-size:11.5px; color:var(--ink-soft);">Get immediate help during an active delivery</div></div>
+        <button class="btn btn-sm" style="width:auto; padding:0 16px; background:var(--danger); color:#fff;" onclick="triggerSOS()">SOS</button>
+      </div>
+
+      <button class="btn btn-dark mb-20" onclick="go('chat')">
+        <span style="display:flex; align-items:center; gap:8px;">${I.chat} Chat with Support</span>
+      </button>
+
+      <h3 style="font-size:15px; margin-bottom:12px;">Frequently asked questions</h3>
+      ${faqs.map((f,i)=>`
+        <div class="card mb-10" style="overflow:hidden;">
+          <button class="tap" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding:15px 16px;" onclick="toggleFaq(${i})">
+            <span style="font-weight:600; font-size:13.5px; text-align:left;">${f.q}</span>
+            <span id="faqChevron${i}" style="color:var(--ink-faint); transition:transform .2s;">${I.chevron}</span>
+          </button>
+          <div id="faqBody${i}" class="hidden" style="padding:0 16px 16px; font-size:12.5px; color:var(--ink-soft); line-height:1.5;">${f.a}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+function toggleFaq(i){
+  const body = el('faqBody'+i), chev = el('faqChevron'+i);
+  const open = !body.classList.contains('hidden');
+  body.classList.toggle('hidden');
+  chev.style.transform = open ? '' : 'rotate(90deg)';
+}
+function triggerSOS(){ toast('Emergency services notified — stay safe'); }
+
+/* ============================================================
+   ROUTER / RENDER
+   ============================================================ */
+const SCREENS = {
+  splash: Screen_splash, auth: Screen_auth, home: Screen_home, notifications: Screen_notifications,
+  booking: Screen_booking, finding: Screen_finding, tracking: Screen_tracking, chat: Screen_chat,
+  rating: Screen_rating, receipt: Screen_receipt, history: Screen_history, wallet: Screen_wallet,
+  addresses: Screen_addresses, promos: Screen_promos, profile: Screen_profile, help: Screen_help,
+};
+const NAV_SCREENS = {home:'home', history:'history', wallet:'wallet', profile:'profile'};
+
+function render(){
+  const body = el('appBody');
+  body.innerHTML = SCREENS[S.screen] ? SCREENS[S.screen]() : Screen_home();
+  const navSlot = el('bottomNavSlot');
+  const hasBottomNav = Object.keys(NAV_SCREENS).includes(S.screen);
+  navSlot.innerHTML = hasBottomNav ? BottomNav(NAV_SCREENS[S.screen] || S.screen) : '';
+  document.getElementById('statusbar').style.color = 'var(--ink)';
+}
+function updateClock(){
+  const d = new Date();
+  let h = d.getHours()%12; if(h===0) h=12;
+  const m = d.getMinutes().toString().padStart(2,'0');
+  el('clock').textContent = `${h}:${m}`;
+}
+updateClock(); setInterval(updateClock, 30000);
+document.documentElement.setAttribute('data-theme','light');
+render();
+</script>
+</body>
+</html>
